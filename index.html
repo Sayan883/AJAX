@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Practice</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+    integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <style>
+    td {
+      text-align: center;
+    }
+
+    sup {
+      color: red;
+    }
+  </style>
+  <script>
+    function dataSend() {
+
+      // dom and javascript method
+      var id = document.getElementById("id").value;
+      var fname = document.getElementById("fname").value;
+      var lname = document.getElementById("lname").value;
+      if (fname != '' && lname != '') {
+        var data = {
+          id: id,
+          fname: fname,
+          lname: lname,
+        };
+        $.ajax({
+          url: "insert.php",
+          type: "POST",
+          data: JSON.stringify(data),
+          contentType: 'application/json',
+          success: function (response) {
+            fetchData();
+            clearFields();
+            $("#tbl").append(`
+            <tr>
+              <td>${response.data.id}</td>
+              <td>${response.data.fname}</td>
+              <td>${response.data.lname}</td>
+              <td>
+                <button onclick="dataShow(${response.data.id})">Edit</button>
+                <button onclick="deleteData(${response.data.id})">Delete</button>
+              </td>
+            </tr>
+          `);
+
+            if (response.status == "success") {
+              $("#msg").text("Data Saved Successfully");
+
+            } else {
+              $("#msg").text("Data Not Saved Successfully");
+            }
+          },
+          error: function () {
+            $("#msg").text("There is an error");
+          }
+        });
+      }
+    }
+
+    function clearFields() {
+      $("#id").val('');
+      $("#fname").val('');
+      $("#lname").val('');
+      $("#search").val('');
+    }
+
+    function dataShow(id) {
+      $.ajax({
+        url: 'view.php',
+        type: 'POST',
+        datatype: 'json',
+        data: JSON.stringify({ id: id }),
+        success: function (response) {
+          if (response.status === 'success') {
+            $("#id").val(response.data.id);
+            $("#fname").val(response.data.fname);
+            $("#lname").val(response.data.lname);
+          } else {
+            $("#msg").text("Unable to Fetch Data");
+          }
+        },
+        error: function (response) {
+          $("#msg").text("There are some errors while fetching");
+        }
+      });
+    }
+
+    function fetchData() {
+      $.ajax({
+        url: 'fetch_all.php',
+        type: 'POST',
+        dataType: 'json',
+        success: function (response) {
+          if (response.status === 'success') {
+            $("#tbl").empty();
+            response.data.forEach(function (row) {
+              $("#tbl").append(`
+              <tr>
+                <td>${row.id}</td>
+                <td>${row.fname}</td>
+                <td>${row.lname}</td>
+                <td><button type='button' onclick="dataShow(${row.id})">Edit</button>
+                      <button type='button' onclick="dataDelete(${row.id})">Delete</button></td>
+              </tr>
+                `);
+            });
+          } else {
+            $("#msg").text("No Data Found");
+          }
+        },
+        error: function () {
+          $("#msg").text("Error while loading data");
+        }
+      });
+    }
+
+    function dataShow(id) {
+      $.ajax({
+        url: 'view.php',
+        type: 'POST',
+        datatype: 'json',
+        data: JSON.stringify({ id: id }),
+        contentType: 'application/json',
+        success: function (response) {
+          if (response.status === 'success') {
+            $("#editId").val(response.data.id);
+            $("#editFname").val(response.data.fname);
+            $("#editLname").val(response.data.lname);
+            $("#editForm").show();
+          } else {
+            $("#msg").text("Unable to Fetch Data: " + response.message);
+          }
+        },
+        error: function () {
+          $("#msg").text("There was an error while fetching data");
+        }
+      });
+    }
+
+
+    function updateData() {
+      var id = $("#editId").val();
+      var fname = $("#editFname").val();
+      var lname = $("#editLname").val();
+
+      var data = {
+        id: id,
+        fname: fname,
+        lname: lname,
+      };
+
+      $.ajax({
+        url: 'edit.php',
+        type: 'POST',
+        dataType: 'json',
+        data: JSON.stringify(data),
+        contentType: 'application/json',
+        success: function (response) {
+          if (response.status === 'success') {
+            $("#msg").text("Data Updated Successfully");
+            $("#editForm").hide(); // Hide edit form after update
+            fetchData();           // Reload the data in the table
+          } else {
+            $("#msg").text("Data Not Updated, Try again!!!");
+          }
+        },
+        error: function () {
+          $("#msg").text("There was an error updating the data");
+        }
+      });
+    }
+
+
+
+    function searchData() {
+      var search = $("#search").val().trim();
+      if (search === '') {
+        $("#msg").text("Please Give some data in the box");
+      } else {
+        $.ajax({
+          url: 'search.php',
+          type: 'POST',
+          datatype: 'JSON',
+          data: JSON.stringify({ search: search }),
+          contentType: 'application/json',
+          success: function (response) {
+            if (response.status === 'success') {
+              $("#tbl").empty();
+              response.data.forEach(function (row) {
+                $("#tbl").append(`
+                  <tr>
+                    <td>${row.id}</td>
+                    <td>${row.fname}</td>
+                    <td>${row.lname}</td>
+                    <td>
+                      <button type='button' onclick="updateData(${row.id})">Edit</button>
+                      <button type='button' onclick="dataDelete(${row.id})">Delete</button>
+                    </td>
+                  </tr>
+                `);
+              });
+              $("#msg").text("");
+            } else {
+              $("#msg").text("No Data Found");
+              $("#tbl").empty();
+            }
+            clearFields();
+          },
+          error: function () {
+            $("#msg").text("Error While Searching");
+          }
+        });
+      }
+    }
+
+    function dataDelete(id) {
+      alert(id);
+      if (confirm("Are you sure you want to delete this record?")) {
+        $.ajax({
+          url: 'delete.php',
+          type: 'POST',
+          data: JSON.stringify({ id: id }),
+          contentType: 'application/json',
+          success: function (response) {
+            if (response.status === 'success') {
+              $("#msg").text("Data Deleted Successfully");
+              fetchData(); // Refresh the table data after deletion
+            } else {
+              $("#msg").text("Failed to Delete Data: " + response.message);
+            }
+          },
+          error: function () {
+            $("#msg").text("There was an error while deleting the data");
+          }
+        });
+      }
+    }
+
+    $(document).ready(function () {
+      fetchData();
+    });
+  </script>
+</head>
+
+<body>
+  <center>
+    <h1> AJAX CRUD Operation</h1>
+    <hr>
+    <h1>Enter Data</h1>
+    <form>
+      <input type="id" id="editId" hidden>
+      First Name:<sup>*</sup><input type="text" id="fname" name="fname" placeholder="Enter First Name"><br><br>
+      Last Name:<sup>*</sup><input type="text" id="lname" name="lname" placeholder="Enter Last Name"><br><br>
+      <input type="button" value="submit" onclick="dataSend()" />
+      <hr>
+    </form>
+    <form id="editForm" style="display:none; margin-top:20px;">
+      <h1>Edit Data</h1>
+      <input type="id" id="id" hidden>
+      First Name:<input type="text" id="editFname" name="editFname" placeholder="Edit First Name"><br><br>
+      Last Name:<input type="text" id="editLname" name="editLname" placeholder="Edit Last Name"><br><br>
+      <input type="button" value="Update" onclick="updateData()" />
+      <hr>
+    </form>
+    <br><br>
+  </center>
+  <div id="msg"></div>
+
+  <center>
+    <h1>Search Data</h1>
+    Enter data:<input type="text" id="search" class="search" name="search" placeholder="Enter data to be searched">
+    <button id="searchbtn" onclick="searchData()">Search</button>
+    <br>
+    <br>
+  </center>
+  <center>
+    <table border="1px" width="50%">
+      <thead>
+        <tr>
+          <th>
+            ID
+          </th>
+          <th>
+            First Name
+          </th>
+          <th>
+            Last Name
+          </th>
+          <th>
+            Actions
+          </th>
+        </tr>
+      </thead>
+      <tbody id="tbl">
+
+      </tbody>
+    </table>
+  </center>
+</body>
+
+</html>
